@@ -5,7 +5,7 @@ const LOGIN_URL = 'https://softwareelectoral.netlify.app/';
 
 export default function App() {
   const handleLogin = () => {
-    window.open(LOGIN_URL, '_blank', 'noopener,noreferrer');
+    window.location.href = LOGIN_URL;
   };
 
   return (
