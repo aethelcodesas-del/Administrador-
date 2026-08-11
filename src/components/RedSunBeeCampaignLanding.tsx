@@ -326,10 +326,6 @@ export const RedSunBeeCampaignLanding: React.FC<RedSunBeeCampaignLandingProps> =
             </a>
           </nav>
 
-          {/* Desktop Action Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <a
-              href={PANEL_ADMIN_URL}
           {/* Desktop Action Button: Iniciar Sesión */}
           <div className="hidden md:flex items-center gap-4">
             <button
@@ -341,16 +337,8 @@ export const RedSunBeeCampaignLanding: React.FC<RedSunBeeCampaignLandingProps> =
               <Lock className="w-3.5 h-3.5 text-white" />
               <span>Iniciar Sesión</span>
             </button>
-            <button
-              type="button"
-              id="btn-nav-crear-cuenta"
-              onClick={() => setIsModalOpen(true)}
-              className="px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/20 transition-all hover:scale-[1.03] active:scale-[0.98] flex items-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
-              <span>Crear Cuenta Gratis</span>
-            </button>
           </div>
+
 
           {/* Mobile Hamburger Button */}
           <button
