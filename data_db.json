@@ -1,0 +1,267 @@
+{
+  "admin": {
+    "users": [
+      {
+        "id": "USR-1001",
+        "name": "Dra. María Paula Restrepo",
+        "cedula": "1085294312",
+        "email": "admin.general@campanaganadora.co",
+        "passwordHash": "AdminSeguro2026!",
+        "role": "Superadmin",
+        "accessLevel": "Nivel 10",
+        "status": "Activo",
+        "createdAt": "2026-01-10"
+      },
+      {
+        "id": "USR-1002",
+        "name": "Ing. Carlos Alberto Mendoza",
+        "cedula": "1020784920",
+        "email": "director.estrategico@campanaganadora.co",
+        "passwordHash": "EstrategiaAI2026!",
+        "role": "Director Político",
+        "accessLevel": "Nivel 9",
+        "status": "Activo",
+        "createdAt": "2026-01-15"
+      },
+      {
+        "id": "USR-1003",
+        "name": "Capitán Fernando Torres",
+        "cedula": "1144028392",
+        "email": "coordinador.e14@campanaganadora.co",
+        "passwordHash": "TestigoE14Pass!",
+        "role": "Coordinador Territorial",
+        "accessLevel": "Nivel 7",
+        "status": "Activo",
+        "createdAt": "2026-02-01"
+      },
+      {
+        "id": "USR-1004",
+        "name": "Dra. Elena Gómez Soler",
+        "cedula": "31894021",
+        "email": "tesoreria@campanaganadora.co",
+        "passwordHash": "FinanzasCNE2026!",
+        "role": "Tesorero / Contador CNE",
+        "accessLevel": "Nivel 8",
+        "status": "Activo",
+        "createdAt": "2026-02-01"
+      }
+    ],
+    "payroll": [
+      {
+        "id": "PAY-101",
+        "concept": "Honorarios Coordinadores de Comuna",
+        "category": "Nómina Campo",
+        "amount": 45000000,
+        "date": "2026-02-01",
+        "status": "Pagado"
+      },
+      {
+        "id": "PAY-102",
+        "concept": "Servicios Servidores Cloud & API OCR",
+        "category": "Tecnología",
+        "amount": 8200000,
+        "date": "2026-02-05",
+        "status": "Pagado"
+      },
+      {
+        "id": "PAY-103",
+        "concept": "Logística de Transporte Día E",
+        "category": "Operación Electoral",
+        "amount": 32000000,
+        "date": "2026-02-06",
+        "status": "Aprobado"
+      }
+    ],
+    "auditLogs": [
+      {
+        "id": "LOG-801",
+        "action": "Cambio de Permisos RBAC",
+        "user": "Dra. María Paula Restrepo",
+        "timestamp": "2026-08-06 20:30",
+        "details": "Nivel 10 habilitado para módulo E-14"
+      },
+      {
+        "id": "LOG-802",
+        "action": "Verificación SHA-256",
+        "user": "Sistema Automático",
+        "timestamp": "2026-08-06 21:15",
+        "details": "Base de datos sincronizada sin errores"
+      }
+    ],
+    "systemSettings": {
+      "maintenanceMode": false,
+      "apiRateLimit": 1200,
+      "sha256Verification": true
+    }
+  },
+  "strategic": {
+    "dafoEntries": [
+      {
+        "id": "DAF-01",
+        "type": "Fortaleza",
+        "description": "Consolidación de votación en Comunas 2, 17 y 19 con 42% intención de voto.",
+        "impact": "Alto",
+        "status": "Activo"
+      },
+      {
+        "id": "DAF-02",
+        "type": "Oportunidad",
+        "description": "Capta de votantes independientes tras debate televisado regional.",
+        "impact": "Muy Alto",
+        "status": "En Proceso"
+      },
+      {
+        "id": "DAF-03",
+        "type": "Amenaza",
+        "description": "Campaña sucia en redes sociales sobre propuestas de movilidad.",
+        "impact": "Medio",
+        "status": "Mitigado"
+      }
+    ],
+    "budgets": [
+      {
+        "id": "STR-B01",
+        "title": "Publicidad Digital & Redes Sociales",
+        "allocated": 120000000,
+        "executed": 84000000,
+        "department": "Comunicaciones"
+      },
+      {
+        "id": "STR-B02",
+        "title": "Encuestas & Tracking Telefónico",
+        "allocated": 65000000,
+        "executed": 42000000,
+        "department": "Investigación Electoral"
+      },
+      {
+        "id": "STR-B03",
+        "title": "Giras Municipales y Eventos Masivos",
+        "allocated": 180000000,
+        "executed": 125000000,
+        "department": "Dirección Estratégica"
+      }
+    ],
+    "aiNotes": [
+      {
+        "id": "NTE-01",
+        "topic": "Discurso Cierre de Precampaña",
+        "content": "Énfasis en seguridad urbana, reactivación económica y control transparente de presupuestos.",
+        "date": "2026-08-05"
+      }
+    ],
+    "candidateProfile": {
+      "name": "Dra. María Paula Restrepo",
+      "cedula": "1085294312",
+      "pseudonym": "María Paula \"La Doctora del Pueblo\"",
+      "profession": "Abogada Especialista en Derecho Público y Gestión Territorial",
+      "photo": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=80",
+      "phone": "+57 310 892 4021",
+      "email": "maria.restrepo@campanaganadora.co",
+      "slogan": "Unidos por el Progreso, la Seguridad y el Futuro de Nuestra Ciudad",
+      "bio": "Líder social con más de 15 años de experiencia en la administración pública, defensora de la transparencia institucional y el desarrollo económico incluyente.",
+      "party": "Movimiento Político Fuerza Ciudadana",
+      "numberOnBallot": "N° 101",
+      "socialMedia": {
+        "whatsapp": "https://wa.me/573108924021",
+        "facebook": "https://facebook.com/mariapaula.restrepo.oficial",
+        "instagram": "https://instagram.com/mariapaularestrepo",
+        "twitter": "https://x.com/mrestrepo2026",
+        "tiktok": "https://tiktok.com/@mariapaularestrepo",
+        "youtube": "https://youtube.com/@mariapaulaoficial",
+        "website": "https://mariapaularestrepo.co"
+      }
+    }
+  },
+  "territorial": {
+    "voters": [
+      {
+        "id": "VOT-001",
+        "name": "Carlos Eduardo Gómez",
+        "cedula": "1085294312",
+        "puesto": "INEM Jorge Isaacs",
+        "mesa": "Mesa 18",
+        "leaderName": "Líder Fernando Torres",
+        "status": "Confirmado"
+      },
+      {
+        "id": "VOT-002",
+        "name": "Ana Lucía Bermúdez",
+        "cedula": "31942081",
+        "puesto": "Colegio Santa Librada",
+        "mesa": "Mesa 05",
+        "leaderName": "Líder Fernando Torres",
+        "status": "Confirmado"
+      },
+      {
+        "id": "VOT-003",
+        "name": "Jorge Ignacio Valencia",
+        "cedula": "16789423",
+        "puesto": "SENA Salomia",
+        "mesa": "Mesa 12",
+        "leaderName": "Líder Beatriz Morales",
+        "status": "Pendiente Movilización"
+      }
+    ],
+    "e14Actas": [
+      {
+        "id": "E14-311",
+        "mesa": "Mesa 01",
+        "puesto": "INEM Jorge Isaacs",
+        "votosCandidato": 184,
+        "votosOponente": 42,
+        "nulos": 0,
+        "status": "Verificada OCR",
+        "timestamp": "8/8/2026, 9:54:20 p. m."
+      },
+      {
+        "id": "E14-101",
+        "mesa": "Mesa 18",
+        "puesto": "INEM Jorge Isaacs",
+        "votosCandidato": 184,
+        "votosOponente": 92,
+        "nulos": 3,
+        "status": "Verificada OCR",
+        "timestamp": "2026-08-06 17:40"
+      },
+      {
+        "id": "E14-102",
+        "mesa": "Mesa 05",
+        "puesto": "Colegio Santa Librada",
+        "votosCandidato": 210,
+        "votosOponente": 88,
+        "nulos": 2,
+        "status": "Verificada OCR",
+        "timestamp": "2026-08-06 17:45"
+      }
+    ],
+    "witnesses": [
+      {
+        "id": "WIT-01",
+        "name": "Capitán Fernando Torres",
+        "puesto": "INEM Jorge Isaacs",
+        "mesa": "Mesa 18",
+        "phone": "3104829102",
+        "geofenceVerified": true,
+        "batteryPct": 94
+      },
+      {
+        "id": "WIT-02",
+        "name": "Beatriz Morales",
+        "puesto": "SENA Salomia",
+        "mesa": "Mesa 12",
+        "phone": "3159201923",
+        "geofenceVerified": true,
+        "batteryPct": 88
+      },
+      {
+        "id": "WIT-03",
+        "name": "Héctor Fabio Ramírez",
+        "puesto": "Coliseo del Pueblo",
+        "mesa": "Mesa 01",
+        "phone": "3001829301",
+        "geofenceVerified": false,
+        "batteryPct": 45
+      }
+    ]
+  }
+}

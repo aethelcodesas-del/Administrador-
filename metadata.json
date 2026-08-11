@@ -1,0 +1,6 @@
+{
+  "name": "Campaña Ganadora AI",
+  "description": "Plataforma Integral de Gestión Electoral, Control Territorial e Inteligencia Política - Inicio de Sesión y Control de Acceso por Roles",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
