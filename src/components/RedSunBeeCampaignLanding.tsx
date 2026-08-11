@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { saveDemoLeadToSupabase, testSupabaseConnection, SUPABASE_URL } from '../lib/supabase';
+import { saveDemoLeadToSupabase, testSupabaseConnection, registerNewClient, PANEL_ADMIN_URL, SUPABASE_URL } from '../lib/supabase';
 import {
   Sparkles,
   ArrowRight,
@@ -35,7 +35,12 @@ import {
   Clock,
   Award,
 } from 'lucide-react';
-export const RedSunBeeCampaignLanding: React.FC = () => {
+
+interface RedSunBeeCampaignLandingProps {
+  onLogin?: () => void;
+}
+
+export const RedSunBeeCampaignLanding: React.FC<RedSunBeeCampaignLandingProps> = ({ onLogin }) => {
   // Navigation & Drawer State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTabDemo, setActiveTabDemo] = useState<'ai' | 'crm' | 'territory' | 'e14'>('ai');
@@ -85,10 +90,17 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
   );
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
 
-  // Demo / Sign Up Modal State
+  // Registration / Sign Up Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalEmail, setModalEmail] = useState<string>('');
+  const [modalPassword, setModalPassword] = useState<string>('');
+  const [modalFullName, setModalFullName] = useState<string>('');
+  const [modalCampaignName, setModalCampaignName] = useState<string>('');
+  const [modalPhone, setModalPhone] = useState<string>('');
   const [modalSubmitted, setModalSubmitted] = useState<boolean>(false);
+  const [modalLoading, setModalLoading] = useState<boolean>(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [registeredPanelUrl, setRegisteredPanelUrl] = useState<string>('');
 
   // Testimonial Filter State
   const [testimonialFilter, setTestimonialFilter] = useState<'all' | 'alcaldia' | 'asamblea' | 'senado'>('all');
@@ -135,24 +147,39 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
 
   const handleModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!modalEmail.trim()) return;
-    setModalSubmitted(true);
+    if (!modalEmail.trim() || !modalPassword.trim() || !modalFullName.trim() || !modalCampaignName.trim()) return;
     
-    // Save lead to Supabase
-    await saveDemoLeadToSupabase({
-      fullName: 'Prospecto Web',
+    // Basic password validation
+    if (modalPassword.length < 8) {
+      setModalError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    setModalLoading(true);
+    setModalError(null);
+    
+    const result = await registerNewClient({
+      fullName: modalFullName,
       email: modalEmail,
-      phone: '',
-      campaignType: 'Demostración',
-      department: 'Colombia',
+      password: modalPassword,
+      campaignName: modalCampaignName,
+      phone: modalPhone,
     });
 
-    addNotification(`¡Demo programada y registrada en Supabase para ${modalEmail}! Nos pondremos en contacto pronto.`, 'success');
+    setModalLoading(false);
+
+    if (!result.success) {
+      setModalError(result.error || 'Error al registrar. Intenta nuevamente.');
+      return;
+    }
+
+    setModalSubmitted(true);
+    setRegisteredPanelUrl(result.panelUrl || PANEL_ADMIN_URL);
+    addNotification(`¡Cuenta creada exitosamente para ${modalEmail}! Redirigiendo al Panel...`, 'success');
+
     setTimeout(() => {
-      setIsModalOpen(false);
-      setModalSubmitted(false);
-      setModalEmail('');
-    }, 2200);
+      window.open(result.panelUrl || PANEL_ADMIN_URL, '_blank');
+    }, 2000);
   };
 
   const toggleFaq = (index: number) => {
@@ -299,15 +326,29 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
             </a>
           </nav>
 
-          {/* Desktop Action Button: Iniciar Sesión (sin función por ahora) */}
+          {/* Desktop Action Buttons */}
+          <div className="hidden md:flex items-center gap-3">
+            <a
+              href={PANEL_ADMIN_URL}
+          {/* Desktop Action Button: Iniciar Sesión */}
           <div className="hidden md:flex items-center gap-4">
             <button
               type="button"
               id="btn-nav-iniciar-sesion"
+              onClick={() => onLogin?.()}
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#FF4D4D] via-[#FF7A3D] to-[#FF6B81] hover:brightness-110 text-white font-extrabold text-xs shadow-lg shadow-red-950/60 cursor-pointer flex items-center gap-2 border border-white/20 transition-all hover:scale-[1.03] active:scale-[0.98]"
             >
               <Lock className="w-3.5 h-3.5 text-white" />
               <span>Iniciar Sesión</span>
+            </button>
+            <button
+              type="button"
+              id="btn-nav-crear-cuenta"
+              onClick={() => setIsModalOpen(true)}
+              className="px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/20 transition-all hover:scale-[1.03] active:scale-[0.98] flex items-center gap-2"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Crear Cuenta Gratis</span>
             </button>
           </div>
 
@@ -393,11 +434,22 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
           <div className="space-y-3 pt-6 border-t border-white/10">
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onLogin?.();
+              }}
               className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#FF4D4D] via-[#FF7A3D] to-[#FF6B81] text-white font-extrabold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer"
             >
               <Lock className="w-4 h-4" />
               <span>Iniciar Sesión</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMobileMenuOpen(false); setIsModalOpen(true); }}
+              className="w-full py-3.5 rounded-full bg-white/10 text-white font-bold text-sm border border-white/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Crear Cuenta Gratis</span>
             </button>
           </div>
         </div>
@@ -1405,62 +1457,168 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
 
       </footer>
 
-      {/* DEMO / SIGN UP INSTANT MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#111111] border border-white/20 rounded-[32px] p-8 max-w-md w-full space-y-6 relative shadow-2xl">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+      {/* FULL REGISTRATION / SIGN UP MODAL */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-[#0d0d0d] border border-white/15 rounded-[32px] p-8 max-w-md w-full space-y-6 relative shadow-2xl"
             >
-              <X className="w-5 h-5" />
-            </button>
+              <button
+                onClick={() => { setIsModalOpen(false); setModalSubmitted(false); setModalError(null); }}
+                className="absolute top-5 right-5 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
 
-            <div className="space-y-2 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF4D4D] to-[#FF7A3D] p-0.5 mx-auto flex items-center justify-center">
-                <div className="w-full h-full bg-[#080808] rounded-[14px] flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-[#FF4D4D]" />
+              <div className="space-y-2 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF4D4D] to-[#FF7A3D] p-0.5 mx-auto flex items-center justify-center shadow-lg shadow-red-900/50">
+                  <div className="w-full h-full bg-[#080808] rounded-[14px] flex items-center justify-center">
+                    <Sparkles className="w-7 h-7 text-[#FF4D4D]" />
+                  </div>
                 </div>
+                <h3 className="text-xl font-black text-white">Crear Cuenta de Campaña</h3>
+                <p className="text-xs text-zinc-400">
+                  Accede al Panel Admin en segundos. Sin tarjeta de crédito.
+                </p>
               </div>
-              <h3 className="text-xl font-black text-white">Solicitar Demo Instantánea</h3>
-              <p className="text-xs text-zinc-400">
-                Ingresa tu correo para recibir acceso exclusivo al entorno interactivo de RedSun.
-              </p>
-            </div>
 
-            {modalSubmitted ? (
-              <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-                <span className="text-xs font-bold text-white block">¡Solicitud Registrada!</span>
-                <p className="text-[11px] text-zinc-300">Te enviaremos el enlace de acceso de inmediato.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleModalSubmit} className="space-y-4">
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-400 uppercase block mb-1.5">
-                    Correo Electrónico Corporativo / Político
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={modalEmail}
-                    onChange={(e) => setModalEmail(e.target.value)}
-                    placeholder="candidato@campana.co"
-                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/15 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-[#FF4D4D]"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="redsun-btn-primary w-full text-xs py-3.5"
+              {modalSubmitted ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
                 >
-                  <span>Agendar Demo Personalizada</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+                  <div className="p-5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-center space-y-3">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                    <span className="text-sm font-black text-white block">¡Cuenta Creada Exitosamente!</span>
+                    <p className="text-xs text-zinc-300">Tu campaña ya está registrada. Abriendo el Panel Admin...</p>
+                  </div>
+                  <a
+                    href={registeredPanelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="redsun-btn-primary w-full text-xs py-3.5 flex items-center justify-center gap-2"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Ir al Panel Admin Ahora</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleModalSubmit} className="space-y-3">
+                  {modalError && (
+                    <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-xs text-red-300 font-semibold">
+                      {modalError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">Nombre Completo *</label>
+                      <input
+                        type="text"
+                        required
+                        value={modalFullName}
+                        onChange={(e) => setModalFullName(e.target.value)}
+                        placeholder="Nombre del candidato"
+                        className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-[#FF4D4D] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">Nombre de la Campaña *</label>
+                      <input
+                        type="text"
+                        required
+                        value={modalCampaignName}
+                        onChange={(e) => setModalCampaignName(e.target.value)}
+                        placeholder="Ej: Campaña Alcaldía 2027"
+                        className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-[#FF4D4D] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">Correo Electrónico *</label>
+                      <input
+                        type="email"
+                        required
+                        value={modalEmail}
+                        onChange={(e) => setModalEmail(e.target.value)}
+                        placeholder="candidato@campana.co"
+                        className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-[#FF4D4D] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">Contraseña (mín. 8 caracteres) *</label>
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={modalPassword}
+                        onChange={(e) => setModalPassword(e.target.value)}
+                        placeholder="Contraseña segura"
+                        className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-[#FF4D4D] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase block mb-1">Teléfono (opcional)</label>
+                      <input
+                        type="tel"
+                        value={modalPhone}
+                        onChange={(e) => setModalPhone(e.target.value)}
+                        placeholder="+57 300 000 0000"
+                        className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-[#FF4D4D] transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={modalLoading}
+                    className="redsun-btn-primary w-full text-xs py-3.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {modalLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Creando tu cuenta...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <span>Crear Cuenta y Acceder al Panel</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </button>
+
+                  <p className="text-center text-[10px] text-zinc-600">
+                    ¿Ya tienes cuenta?{' '}
+                    <a
+                      href={PANEL_ADMIN_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#FF4D4D] hover:underline font-bold"
+                    >
+                      Accede directamente al Panel →
+                    </a>
+                  </p>
+                </form>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Floating Scroll To Top Button */}
       <AnimatePresence>
         {showScrollTop && (

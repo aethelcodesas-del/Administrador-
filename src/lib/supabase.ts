@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
 // Get Supabase URL and Key from environment variables or fallback to provided user values
 const env = (import.meta as any).env || {};
 const rawUrl = env.VITE_SUPABASE_URL || 'https://ojvrlleziqrimhjvsbwf.supabase.co';
 export const SUPABASE_URL = rawUrl.replace(/\/rest\/v1\/?$/, '');
 export const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_mI1eBd8nNRGv9uIICgOU-w_2weLI9lp';
+
+// URL del Software Electoral al que se redirige tras el registro/login
+export const PANEL_ADMIN_URL = env.VITE_PANEL_ADMIN_URL || 'https://softwareelectoral.netlify.app/';
 
 // Initialize Supabase Client
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -19,7 +23,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
  */
 export async function testSupabaseConnection(): Promise<{ success: boolean; message: string }> {
   try {
-    // Attempt a lightweight fetch from Supabase
     const { error } = await supabase.from('campaigns').select('count', { count: 'exact', head: true });
     if (error && error.code !== 'PGRST116' && !error.message.includes('relation "public.campaigns" does not exist')) {
       console.warn('Supabase ping check:', error.message);
@@ -29,6 +32,96 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
   } catch (err: any) {
     console.error('Error connecting to Supabase:', err);
     return { success: false, message: err?.message || 'Error al conectar con Supabase' };
+  }
+}
+
+/**
+ * Register a New Candidate/Client with instant Panel Admin access.
+ * Creates a record in `clients` and a superadmin user in `users_list`.
+ */
+export async function registerNewClient(data: {
+  fullName: string;
+  email: string;
+  password: string;
+  campaignName: string;
+  phone?: string;
+  department?: string;
+}): Promise<{ success: boolean; error?: string; panelUrl?: string }> {
+  try {
+    // 1. Check if email already exists
+    const { data: existingUser } = await supabase
+      .from('users_list')
+      .select('email')
+      .eq('email', data.email)
+      .single();
+
+    if (existingUser) {
+      return { success: false, error: 'Este correo electrónico ya está registrado. Usa otro o accede al Panel.' };
+    }
+
+    // 2. Create the client organization record
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .insert([{
+        nombre_organizacion: data.campaignName,
+        email_contacto: data.email,
+        telefono: data.phone || '',
+        departamento: data.department || 'Colombia',
+        estado: 'Activo',
+        created_from: 'landing',
+        created_at: new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (clientError) {
+      console.error('Error creating client:', clientError);
+      return { success: false, error: 'No se pudo registrar la organización. Intenta nuevamente.' };
+    }
+
+    // 3. Hash the password
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+
+    // 4. Create the superadmin user linked to the new client
+    const { error: userError } = await supabase
+      .from('users_list')
+      .insert([{
+        name: data.fullName,
+        email: data.email,
+        password_hash: hashedPassword,
+        role: 'superadmin',
+        cargo: 'Candidato / Propietario',
+        estado: 'Activo',
+        client_id: clientData.id,
+        created_at: new Date().toISOString(),
+        ip: '0.0.0.0',
+      }]);
+
+    if (userError) {
+      console.error('Error creating user:', userError);
+      // Rollback: delete the client record we just created
+      await supabase.from('clients').delete().eq('id', clientData.id);
+      return { success: false, error: 'Error al crear tu cuenta de acceso. Contacta a soporte.' };
+    }
+
+    // 5. Also save as demo lead for CRM tracking
+    await supabase.from('demo_leads').insert([{
+      full_name: data.fullName,
+      email: data.email,
+      phone: data.phone || '',
+      campaign_type: data.campaignName,
+      department: data.department || 'Colombia',
+      notes: 'Registro automático desde landing',
+      created_at: new Date().toISOString(),
+    }]);
+
+    return {
+      success: true,
+      panelUrl: PANEL_ADMIN_URL,
+    };
+  } catch (err: any) {
+    console.error('Error in registerNewClient:', err);
+    return { success: false, error: err?.message || 'Error inesperado al registrar la cuenta.' };
   }
 }
 
@@ -71,3 +164,4 @@ export async function saveDemoLeadToSupabase(lead: {
     return { success: false, error: err?.message };
   }
 }
+
