@@ -299,15 +299,15 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
             </a>
           </nav>
 
-          {/* Desktop Action Button: Solicitar Demo */}
+          {/* Desktop Action Button: Iniciar Sesión (sin función por ahora) */}
           <div className="hidden md:flex items-center gap-4">
             <button
-              onClick={() => setIsModalOpen(true)}
-              id="btn-nav-solicitar-demo"
+              type="button"
+              id="btn-nav-iniciar-sesion"
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#FF4D4D] via-[#FF7A3D] to-[#FF6B81] hover:brightness-110 text-white font-extrabold text-xs shadow-lg shadow-red-950/60 cursor-pointer flex items-center gap-2 border border-white/20 transition-all hover:scale-[1.03] active:scale-[0.98]"
             >
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span>Solicitar Demo</span>
+              <Lock className="w-3.5 h-3.5 text-white" />
+              <span>Iniciar Sesión</span>
             </button>
           </div>
 
@@ -392,14 +392,12 @@ export const RedSunBeeCampaignLanding: React.FC = () => {
 
           <div className="space-y-3 pt-6 border-t border-white/10">
             <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setIsModalOpen(true);
-              }}
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
               className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#FF4D4D] via-[#FF7A3D] to-[#FF6B81] text-white font-extrabold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Solicitar Demo Personalizada</span>
+              <Lock className="w-4 h-4" />
+              <span>Iniciar Sesión</span>
             </button>
           </div>
         </div>
