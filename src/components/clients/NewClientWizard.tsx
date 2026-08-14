@@ -1050,7 +1050,7 @@ export const NewClientWizard: React.FC<NewClientWizardProps> = ({ isOpen, onClos
               {isSubmitting ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" />
-                  Guardando y Activando en MongoDB...
+                  Guardando y Activando en Supabase...
                 </>
               ) : (
                 <>
