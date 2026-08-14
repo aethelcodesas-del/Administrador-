@@ -15,10 +15,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
           getUser: async () => ({ data: { user: null }, error: null }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
           signOut: async () => ({ error: null }),
+          signInWithPassword: async () => { throw new Error('Error: Conexión a Supabase no configurada. Faltan las variables de entorno en Vercel.'); },
+          signUp: async () => { throw new Error('Error: Conexión a Supabase no configurada. Faltan las variables de entorno en Vercel.'); },
         };
       }
       return () => {
-        throw new Error('Supabase no configurado. Asegúrate de definir VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Vercel.');
+        throw new Error('Supabase no está configurado. Faltan las variables VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.');
       };
     }
   });
