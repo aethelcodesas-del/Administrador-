@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# Scripts de diagnóstico con credenciales sensibles (nunca subir a Git)
+scratch/
