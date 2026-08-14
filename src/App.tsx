@@ -95,7 +95,6 @@ const MainLayout: React.FC<{ onLogout: () => void; onBackToModules: () => void }
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [topLevelView, setTopLevelView] = useState<'landing' | 'login' | 'modules' | 'admin'>('landing');
 
   useEffect(() => {
     // Check if there is an active session on mount
@@ -105,10 +104,8 @@ export default function App() {
         if (data?.user) {
           const profile = await authService.getProfileByAuthId(data.user.id);
           setUser(profile);
-          setTopLevelView('modules');
         } else {
           setUser(null);
-          setTopLevelView('landing');
         }
       } catch (e) {
         console.warn('Error loading active session:', e);
@@ -120,24 +117,11 @@ export default function App() {
 
   const handleLoginSuccess = (userData: any) => {
     setUser(userData);
-    setTopLevelView('modules');
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setTopLevelView('landing');
-  };
-
-  const handleSelectModule = (moduleId: string) => {
-    if (moduleId === 'admin') {
-      setTopLevelView('admin');
-    } else {
-      alert(
-        `El módulo "${moduleId === 'strategic' ? 'Gestión Estratégica & IA' : 'Gestión Territorial & E-14'
-        }" está simulado a través de esta versión local integrada. Por favor, acceda al módulo "Gestión Administrativa Global" para ver el panel de administración central de clientes y campañas.`
-      );
-    }
   };
 
   if (loading) {
@@ -147,50 +131,26 @@ export default function App() {
           <ShieldCheck className="h-9 w-9" />
         </div>
         <p className="text-xs font-bold tracking-widest text-purple-400 uppercase animate-pulse">
-          Cargando Entorno Local...
+          Cargando Panel de Administración...
         </p>
       </div>
     );
   }
 
-  // Router switch based on topLevelView state
-  switch (topLevelView) {
-    case 'landing':
-      return (
-        <RedSunBeeCampaignLanding
-          onLogin={() => setTopLevelView('login')}
-          onLoginSuccess={handleLoginSuccess}
-        />
-      );
-    case 'login':
-      return (
-        <LoginView
-          onLoginSuccess={handleLoginSuccess}
-          onBack={() => setTopLevelView('landing')}
-        />
-      );
-    case 'modules':
-      return (
-        <ModuleSelectPage
-          onBack={handleLogout}
-          onSelectModule={handleSelectModule}
-        />
-      );
-    case 'admin':
-      return (
-        <AppProvider user={user}>
-          <MainLayout
-            onLogout={handleLogout}
-            onBackToModules={() => setTopLevelView('modules')}
-          />
-        </AppProvider>
-      );
-    default:
-      return (
-        <RedSunBeeCampaignLanding
-          onLogin={() => setTopLevelView('login')}
-          onLoginSuccess={handleLoginSuccess}
-        />
-      );
+  if (!user) {
+    return (
+      <LoginView
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
+
+  return (
+    <AppProvider user={user}>
+      <MainLayout
+        onLogout={handleLogout}
+        onBackToModules={handleLogout}
+      />
+    </AppProvider>
+  );
 }
