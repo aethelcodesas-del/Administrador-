@@ -60,6 +60,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   activeTenantId: string | 'GLOBAL';
   setActiveTenantId: (id: string | 'GLOBAL') => void;
+  isDataLoading: boolean;
 
   // Data
   clients: Client[];
@@ -141,58 +142,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
     setIsExpiredDemoModalOpen(false);
   };
 
-  // Load or fallback state from localStorage
-  const [clients, setClients] = useState<Client[]>(() => {
-    const saved = localStorage.getItem('cg_clients');
-    return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
-  });
-
-  const [licenses, setLicenses] = useState<License[]>(() => {
-    const saved = localStorage.getItem('cg_licenses');
-    return saved ? JSON.parse(saved) : INITIAL_LICENSES;
-  });
-
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
-    const saved = localStorage.getItem('cg_subscriptions');
-    return saved ? JSON.parse(saved) : INITIAL_SUBSCRIPTIONS;
-  });
-
+  // Load or fallback state from Supabase (skip localStorage stale mock data when user is present)
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(!!user);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [plans, setPlans] = useState<Plan[]>(() => {
     const saved = localStorage.getItem('cg_plans');
     return saved ? JSON.parse(saved) : INITIAL_PLANS;
   });
   const [modules, setModules] = useState<ModuleDefinition[]>(INITIAL_MODULES);
-
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('cg_users');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
-  });
-
+  const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>(() => {
     const saved = localStorage.getItem('cg_roles');
     return saved ? JSON.parse(saved) : INITIAL_ROLES;
   });
-
   const [permissions] = useState<Permission[]>(INITIAL_PERMISSIONS);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(() => {
-    const saved = localStorage.getItem('cg_campaigns');
-    return saved ? JSON.parse(saved) : INITIAL_CAMPAIGNS;
-  });
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('cg_invoices');
-    return saved ? JSON.parse(saved) : INITIAL_INVOICES;
-  });
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    const saved = localStorage.getItem('cg_audit');
-    return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
-  });
-
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
-  const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
-    const saved = localStorage.getItem('cg_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-  });
+  const [notifications, setNotifications] = useState<SystemNotification[]>([]);
+
 
   // Sync dark mode class
   useEffect(() => {
@@ -209,7 +180,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
 
 
 
-
   // Load data from InsForge DB when authenticated
   useEffect(() => {
     if (!user) return;
@@ -223,20 +193,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
         if (clientsData && clientsData.length > 0) {
           const mappedClients = clientsData.map((c: any) => ({
             id: c.id,
-            organizationName: c.organization_name,
-            responsibleName: c.responsible_name,
-            taxId: c.tax_id,
+            organizationName: c.organization_name || c.name,
+            responsibleName: c.responsible_name || '',
+            taxId: c.document || c.tax_id || '',
             email: c.email,
-            phone: c.phone,
-            country: c.country,
-            department: c.department,
-            city: c.city,
+            phone: c.phone || '',
+            country: c.country || 'Colombia',
+            department: c.department || c.address || '',
+            city: c.city || '',
             createdAt: c.created_at,
             status: c.status,
-            planId: c.plan_id,
-            planName: c.plan_name,
+            planId: c.plan_id || '',
+            planName: c.plan_name || '',
             activeUsersCount: c.active_users_count || 0,
-            maxUsersAllowed: c.max_users_allowed || 0,
+            maxUsersAllowed: c.max_users_allowed || 5,
             activeCampaignsCount: c.active_campaigns_count || 0,
             notes: c.notes,
             logoUrl: c.logo_url,
@@ -253,14 +223,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
           const mappedLicenses = licensesData.map((l: any) => ({
             id: l.id,
             clientId: l.client_id,
-            clientName: l.client_name,
-            planId: l.plan_id,
-            planName: l.plan_name,
+            clientName: l.client_name || '',
+            planId: l.plan_id || '',
+            planName: l.plan_name || l.type || '',
             createdAt: l.created_at,
-            activatedAt: l.activated_at,
-            expiresAt: l.expiresAt || l.expires_at,
+            activatedAt: l.activated_at || l.start_date || l.created_at,
+            expiresAt: l.expiration_date || l.expires_at || '',
             status: l.status,
-            licenseType: l.license_type,
+            licenseType: l.license_type || l.type || 'Anual',
             maxUsers: l.max_users || 0,
             usedUsers: l.used_users || 0,
             maxCampaigns: l.max_campaigns || 0,
@@ -298,26 +268,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
           setSubscriptions([]);
         }
 
-        // 4. Users (from users_list)
-        const { data: usersData } = await insforge.database.from('users_list').select('*');
+        // 4. Users (from profiles joined with user_roles)
+        const { data: usersData } = await insforge.database.from('users_list').select(`
+          *,
+          user_roles (role_id)
+        `);
         if (usersData && usersData.length > 0) {
           const mappedUsers = usersData.map((u: any) => ({
             id: u.id,
-            firstName: u.first_name,
-            lastName: u.last_name,
+            firstName: u.first_name || '',
+            lastName: u.last_name || '',
             email: u.email,
-            phone: u.phone,
-            clientId: u.client_id,
-            clientName: u.client_name,
-            campaignId: u.campaign_id,
-            campaignName: u.campaign_name,
-            roleId: u.role_id,
-            roleName: u.role_name,
-            status: u.status,
-            lastAccessAt: u.last_access_at,
+            phone: u.phone || '',
+            clientId: u.client_id || '',
+            clientName: u.client_name || '',
+            campaignId: u.campaign_id || '',
+            campaignName: u.campaign_name || '',
+            roleId: u.user_roles?.[0]?.role_id || u.role_id || 'client_admin',
+            roleName: u.role_name || u.user_roles?.[0]?.role_id || 'Administrador',
+            status: u.status || 'Activo',
+            lastAccessAt: u.last_access_at || u.updated_at || '',
             createdAt: u.created_at,
-            ipAddress: u.ip_address,
-            avatarUrl: u.avatar_url
+            ipAddress: u.ip_address || '',
+            avatarUrl: u.avatar_url || ''
           }));
           setUsers(mappedUsers);
         } else {
@@ -369,21 +342,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
         }
 
         // 7. Audit logs
-        const { data: auditData } = await insforge.database.from('audit_logs').select('*');
+        const { data: auditData } = await insforge.database.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
         if (auditData && auditData.length > 0) {
           const mappedAudit = auditData.map((a: any) => ({
             id: a.id,
-            timestamp: a.timestamp,
-            userId: a.user_id_ref,
-            userName: a.user_name,
-            userEmail: a.user_email,
+            timestamp: a.timestamp || a.created_at,
+            userId: a.user_id_ref || a.user_id || '',
+            userName: a.user_name || '',
+            userEmail: a.user_email || '',
             clientId: a.client_id,
-            clientName: a.client_name,
+            clientName: a.client_name || '',
             action: a.action,
-            category: a.category,
-            details: a.details,
-            ipAddress: a.ip_address,
-            result: a.result
+            category: a.category || 'Sistema',
+            details: a.details || a.description || '',
+            ipAddress: a.ip_address || '',
+            result: a.result || 'Éxito'
           }));
           setAuditLogs(mappedAudit);
         } else {
@@ -406,13 +379,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
         } else {
           setNotifications([]);
         }
+        // Clear stale localStorage data now that we have real Supabase data
+        const cacheKeys = ['cg_clients','cg_licenses','cg_subscriptions','cg_campaigns','cg_invoices','cg_audit','cg_notifications','cg_users'];
+        cacheKeys.forEach(k => localStorage.removeItem(k));
+
       } catch (err) {
         console.error('Error fetching data from Supabase:', err);
+      } finally {
+        setIsDataLoading(false);
       }
     };
 
     fetchAllData();
   }, [user]);
+
 
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 
@@ -623,169 +603,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
       await Promise.allSettled([
         insforge.database.from('clients').insert([{
           id: newClient.id,
-          organizationName: newClient.organizationName,
+          name: newClient.organizationName,
           organization_name: newClient.organizationName,
-          responsibleName: newClient.responsibleName,
           responsible_name: newClient.responsibleName,
-          taxId: newClient.taxId,
-          tax_id: newClient.taxId,
+          document: newClient.taxId,
           email: newClient.email,
           phone: newClient.phone,
+          address: newClient.department || newClient.city || 'Colombia',
           country: newClient.country,
           department: newClient.department,
           city: newClient.city,
-          createdAt: newClient.createdAt,
-          created_at: newClient.createdAt,
           status: newClient.status,
-          planId: newClient.planId,
           plan_id: newClient.planId,
-          planName: newClient.planName,
           plan_name: newClient.planName,
-          activeUsersCount: newClient.activeUsersCount,
           active_users_count: newClient.activeUsersCount,
-          maxUsersAllowed: newClient.maxUsersAllowed,
           max_users_allowed: newClient.maxUsersAllowed,
-          activeCampaignsCount: newClient.activeCampaignsCount,
           active_campaigns_count: newClient.activeCampaignsCount,
           notes: newClient.notes || null,
-          logoUrl: newClient.logoUrl || null,
           logo_url: newClient.logoUrl || null,
           aspiration: newClient.aspiration || null,
-          user_id: authUserId
         }]),
         insforge.database.from('licenses').insert([{
           id: newLicense.id,
-          clientId: newLicense.clientId,
           client_id: newLicense.clientId,
-          clientName: newLicense.clientName,
           client_name: newLicense.clientName,
-          planId: newLicense.planId,
           plan_id: newLicense.planId,
-          planName: newLicense.planName,
           plan_name: newLicense.planName,
-          createdAt: newLicense.createdAt,
-          created_at: newLicense.createdAt,
-          activatedAt: newLicense.activatedAt,
-          activated_at: newLicense.activatedAt,
-          expiresAt: newLicense.expiresAt,
-          expires_at: newLicense.expiresAt,
-          status: newLicense.status,
-          licenseType: newLicense.licenseType,
-          license_type: newLicense.licenseType,
-          maxUsers: newLicense.maxUsers,
-          max_users: newLicense.maxUsers,
-          usedUsers: newLicense.usedUsers,
-          used_users: newLicense.usedUsers,
-          maxCampaigns: newLicense.maxCampaigns,
-          max_campaigns: newLicense.maxCampaigns,
-          usedCampaigns: newLicense.usedCampaigns,
-          used_campaigns: newLicense.usedCampaigns,
-          maxStorageGB: newLicense.maxStorageGB,
-          max_storage_gb: newLicense.maxStorageGB,
-          enabledModuleCodes: newLicense.enabledModuleCodes,
-          enabled_module_codes: newLicense.enabledModuleCodes,
-          licenseKey: newLicense.licenseKey,
           license_key: newLicense.licenseKey,
-          autoRenew: newLicense.autoRenew,
+          activated_at: newLicense.activatedAt,
+          expiration_date: newLicense.expiresAt,
+          status: newLicense.status,
+          type: newLicense.licenseType,
+          license_type: newLicense.licenseType,
+          max_users: newLicense.maxUsers,
+          used_users: newLicense.usedUsers,
+          max_campaigns: newLicense.maxCampaigns,
+          used_campaigns: newLicense.usedCampaigns,
+          max_storage_gb: newLicense.maxStorageGB,
+          enabled_module_codes: newLicense.enabledModuleCodes,
           auto_renew: newLicense.autoRenew,
-          user_id: authUserId
         }]),
         insforge.database.from('subscriptions').insert([{
           id: newSub.id,
-          clientId: newSub.clientId,
           client_id: newSub.clientId,
-          clientName: newSub.clientName,
           client_name: newSub.clientName,
-          planId: newSub.planId,
           plan_id: newSub.planId,
-          planName: newSub.planName,
           plan_name: newSub.planName,
           price: newSub.price,
           currency: newSub.currency,
           periodicity: newSub.periodicity,
-          startDate: newSub.startDate,
           start_date: newSub.startDate,
-          nextBillingDate: newSub.nextBillingDate,
           next_billing_date: newSub.nextBillingDate,
-          expirationDate: newSub.expirationDate,
           expiration_date: newSub.expirationDate,
           status: newSub.status,
-          paymentMethod: newSub.paymentMethod || null,
           payment_method: newSub.paymentMethod || null,
-          user_id: authUserId
         }]),
-        insforge.database.from('users_list').insert([{
-          id: newAdminUser.id,
-          firstName: newAdminUser.firstName,
-          first_name: newAdminUser.firstName,
-          lastName: newAdminUser.lastName,
-          last_name: newAdminUser.lastName,
-          email: adminUserEmail.trim().toLowerCase(),
-          password: newAdminUser.password,
-          phone: newAdminUser.phone || null,
-          clientId: newAdminUser.clientId,
+        // Note: The user profile is created by the trigger on_auth_user_created when the RPC creates the auth user.
+        // We update the profile with additional client info:
+        insforge.database.from('profiles').update({
           client_id: newAdminUser.clientId,
-          clientName: newAdminUser.clientName,
           client_name: newAdminUser.clientName,
-          campaignId: newAdminUser.campaignId || null,
-          campaign_id: newAdminUser.campaignId || null,
-          campaignName: newAdminUser.campaignName || null,
-          campaign_name: newAdminUser.campaignName || null,
-          roleId: newAdminUser.roleId,
-          role_id: newAdminUser.roleId,
-          roleName: newAdminUser.roleName,
-          role_name: newAdminUser.roleName,
+          phone: newAdminUser.phone || null,
           status: newAdminUser.status,
-          lastAccessAt: newAdminUser.lastAccessAt,
-          last_access_at: newAdminUser.lastAccessAt,
-          createdAt: newAdminUser.createdAt,
-          created_at: newAdminUser.createdAt,
-          ipAddress: newAdminUser.ipAddress || null,
-          ip_address: newAdminUser.ipAddress || null,
-          avatarUrl: newAdminUser.avatarUrl || null,
-          avatar_url: newAdminUser.avatarUrl || null,
-          user_id: authUserId
-        }]),
+        }).eq('auth_user_id', authUserId),
         insforge.database.from('invoices').insert([{
           id: newInvoice.id,
-          clientId: newInvoice.clientId,
           client_id: newInvoice.clientId,
-          clientName: newInvoice.clientName,
           client_name: newInvoice.clientName,
-          invoiceNumber: newInvoice.id,
           invoice_number: newInvoice.id,
-          planName: plan.name,
           plan_name: plan.name,
-          totalAmount: newInvoice.totalAmount,
+          amount: newInvoice.amount,
+          tax_amount: newInvoice.taxAmount,
           total_amount: newInvoice.totalAmount,
-          currency: newSub.currency,
-          issueDate: newInvoice.issueDate,
+          description: newInvoice.description,
           issue_date: newInvoice.issueDate,
-          dueDate: newInvoice.dueDate,
           due_date: newInvoice.dueDate,
-          paidAt: newInvoice.paidAt || null,
           paid_at: newInvoice.paidAt || null,
           status: newInvoice.status,
-          user_id: authUserId
+          payment_method: newInvoice.paymentMethod || null,
         }]),
         insforge.database.from('campaigns').insert([{
           id: newCampaign.id,
-          clientId: newCampaign.clientId,
           client_id: newCampaign.clientId,
-          clientName: newCampaign.clientName,
           client_name: newCampaign.clientName,
           name: newCampaign.name,
-          candidateName: newCampaign.candidateName,
           candidate_name: newCampaign.candidateName,
-          electionType: newCampaign.electionType,
           election_type: newCampaign.electionType,
           territory: newCampaign.territory,
-          startDate: newCampaign.startDate,
           start_date: newCampaign.startDate,
-          electionDate: newCampaign.electionDate,
           election_date: newCampaign.electionDate,
+          registered_voters_target: newCampaign.registeredVotersTarget,
+          registered_voters_current: newCampaign.registeredVotersCurrent,
           status: newCampaign.status,
-          user_id: authUserId
         }])
       ]);
     } catch (err: any) {
@@ -1360,6 +1269,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
         toggleDarkMode,
         activeTenantId,
         setActiveTenantId,
+        isDataLoading,
         clients: clientsWithMetrics,
         licenses: licensesWithMetrics,
         subscriptions,
