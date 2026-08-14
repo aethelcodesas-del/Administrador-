@@ -1,0 +1,5 @@
+-- 006_fix_profile_rls.sql  
+-- Corrects RLS policies on profiles table so that:  
+-- 1. The SECURITY DEFINER trigger can insert the profile after signUp  
+-- 2. The authenticated user can read their own profile immediately after login  
+-- 3. Admins can INSERT new profiles for users they manage 
