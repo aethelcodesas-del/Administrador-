@@ -199,39 +199,8 @@ export const authService = {
 
   /**
    * Recupera el perfil del usuario buscando por su auth_user_id.
-   * USA RPC get_profile_by_auth_id (SECURITY DEFINER + row_security=off)
-   * para evitar la recursión infinita en políticas RLS de profiles.
    */
   async getProfileByAuthId(authUserId: string) {
-    // Intentar primero con la RPC segura (evita recursión RLS)
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_profile_by_auth_id', { p_auth_user_id: authUserId });
-
-    if (!rpcError && rpcData) {
-      const roleId: string = rpcData.role_id || 'user';
-      let roleName = 'Usuario de Consulta';
-      if (roleId === 'super_admin') roleName = 'Super Administrador General';
-      if (roleId === 'admin')       roleName = 'Administrador de Campaña';
-      if (roleId === 'supervisor')  roleName = 'Supervisor del Panel';
-
-      return {
-        id:         rpcData.id,
-        firstName:  rpcData.first_name  || '',
-        lastName:   rpcData.last_name   || '',
-        email:      rpcData.email       || '',
-        phone:      rpcData.phone       || '',
-        clientId:   rpcData.client_id   || '',
-        clientName: rpcData.client_name || '',
-        roleId,
-        roleName,
-        status:     rpcData.status      || 'Activo',
-        avatarUrl:  rpcData.avatar_url  || '',
-        createdAt:  rpcData.created_at  || '',
-      };
-    }
-
-    // Fallback: query directa (funciona después de aplicar las migraciones RLS)
-    console.warn('[authService.getProfileByAuthId] RPC no disponible, usando query directa:', rpcError?.message);
     const { data, error } = await supabase
       .from('profiles')
       .select('*, user_roles(role_id), clients(name)')
@@ -241,25 +210,28 @@ export const authService = {
     if (error) throw error;
     if (!data) return null;
 
-    const roleId: string = data.user_roles?.[0]?.role_id || 'user';
+    // Mapear al modelo de la aplicación
+    const roleId = data.user_roles?.[0]?.role_id || 'user';
+
+    // Obtener los nombres correctos de roles para la interfaz
     let roleName = 'Usuario de Consulta';
     if (roleId === 'super_admin') roleName = 'Super Administrador General';
-    if (roleId === 'admin')       roleName = 'Administrador de Campaña';
-    if (roleId === 'supervisor')  roleName = 'Supervisor del Panel';
+    if (roleId === 'admin') roleName = 'Administrador de Campaña';
+    if (roleId === 'supervisor') roleName = 'Supervisor del Panel';
 
     return {
-      id:         data.id,
-      firstName:  data.first_name  || '',
-      lastName:   data.last_name   || '',
-      email:      data.email       || '',
-      phone:      data.phone       || '',
-      clientId:   data.client_id   || '',
+      id: data.id,
+      firstName: data.first_name || '',
+      lastName: data.last_name || '',
+      email: data.email,
+      phone: data.phone || '',
+      clientId: data.client_id || '',
       clientName: data.clients?.name || '',
-      roleId,
-      roleName,
-      status:     data.status    || 'Activo',
-      avatarUrl:  data.avatar_url || '',
-      createdAt:  data.created_at || '',
+      roleId: roleId,
+      roleName: roleName,
+      status: data.status || 'Activo',
+      avatarUrl: data.avatar_url || '',
+      createdAt: data.created_at,
     };
   },
 
