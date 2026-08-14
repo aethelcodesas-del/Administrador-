@@ -11,6 +11,7 @@ import {
 
 interface ModuleSelectPageProps {
   onBack: () => void;
+  onSelectModule: (moduleId: string) => void;
 }
 
 const modules = [
@@ -52,7 +53,7 @@ const modules = [
   },
 ];
 
-export function ModuleSelectPage({ onBack }: ModuleSelectPageProps) {
+export function ModuleSelectPage({ onBack, onSelectModule }: ModuleSelectPageProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   return (
@@ -109,6 +110,7 @@ export function ModuleSelectPage({ onBack }: ModuleSelectPageProps) {
                 key={mod.id}
                 onMouseEnter={() => setHovered(mod.id)}
                 onMouseLeave={() => setHovered(null)}
+                onClick={() => onSelectModule(mod.id)}
                 className={`
                   relative group cursor-pointer rounded-2xl border p-6 flex flex-col gap-4
                   bg-white/[0.03] backdrop-blur-sm transition-all duration-300
@@ -146,6 +148,10 @@ export function ModuleSelectPage({ onBack }: ModuleSelectPageProps) {
                 {/* Enter button */}
                 <button
                   type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectModule(mod.id);
+                  }}
                   className={`
                     mt-auto w-full py-2.5 rounded-xl bg-gradient-to-r ${mod.gradient}
                     text-white font-bold text-sm flex items-center justify-center gap-2

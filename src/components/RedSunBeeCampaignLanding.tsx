@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { saveDemoLeadToSupabase, testSupabaseConnection, registerNewClient, PANEL_ADMIN_URL, SUPABASE_URL } from '../lib/supabase';
+import { saveDemoLeadToSupabase, testSupabaseConnection, registerNewClient, PANEL_ADMIN_URL, SUPABASE_URL } from '../services/supabaseClient';
 import {
   Sparkles,
   ArrowRight,
@@ -38,9 +38,10 @@ import {
 
 interface RedSunBeeCampaignLandingProps {
   onLogin?: () => void;
+  onLoginSuccess?: (user: any) => void;
 }
 
-export const RedSunBeeCampaignLanding: React.FC<RedSunBeeCampaignLandingProps> = ({ onLogin }) => {
+export const RedSunBeeCampaignLanding: React.FC<RedSunBeeCampaignLandingProps> = ({ onLogin, onLoginSuccess }) => {
   // Navigation & Drawer State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTabDemo, setActiveTabDemo] = useState<'ai' | 'crm' | 'territory' | 'e14'>('ai');
@@ -174,12 +175,20 @@ export const RedSunBeeCampaignLanding: React.FC<RedSunBeeCampaignLandingProps> =
     }
 
     setModalSubmitted(true);
-    setRegisteredPanelUrl(result.panelUrl || PANEL_ADMIN_URL);
-    addNotification(`¡Cuenta creada exitosamente para ${modalEmail}! Redirigiendo al Panel...`, 'success');
+    setRegisteredPanelUrl('#');
+    addNotification(`¡Cuenta creada exitosamente para ${modalEmail}! Ingresando...`, 'success');
 
     setTimeout(() => {
-      window.open(result.panelUrl || PANEL_ADMIN_URL, '_blank');
-    }, 2000);
+      setIsModalOpen(false);
+      if (onLoginSuccess) {
+        onLoginSuccess({
+          id: `u-admin-${Date.now()}`,
+          email: modalEmail,
+          user_metadata: { name: modalFullName },
+          role: 'admin'
+        });
+      }
+    }, 1500);
   };
 
   const toggleFaq = (index: number) => {
