@@ -115,7 +115,22 @@ export default function App() {
     loadSession();
   }, []);
 
-  const handleLoginSuccess = (userData: any) => {
+  const handleLoginSuccess = async (userData: any) => {
+    // userData puede ser el perfil completo (desde authService) o un objeto parcial (legacy)
+    // Intentar obtener siempre el perfil real desde la BD para garantizar consistencia
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        const profile = await authService.getProfileByAuthId(authData.user.id);
+        if (profile) {
+          setUser(profile);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[App] No se pudo obtener el perfil real, usando datos del modal:', e);
+    }
+    // Fallback: usar el objeto que viene del modal
     setUser(userData);
   };
 

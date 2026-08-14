@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Key,
   Lock,
@@ -12,7 +12,8 @@ import {
   CheckCircle,
   UserPlus,
 } from 'lucide-react';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from '../lib/supabase';
+import { authService } from '../services/authService';
 import { translateError } from '../utils/errorTranslator';
 
 /* ─────────────────────────────────────────────
@@ -117,42 +118,64 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password.trim(),
-      });
+      // Usar authService.signIn que garantiza:
+      // 1. Credenciales correctas en Supabase Auth
+      // 2. Perfil existe (con recuperación automática si el trigger falló)
+      // 3. Estado del usuario (Suspendido / Inactivo)
+      const { user, profile } = await authService.signIn(
+        email.trim().toLowerCase(),
+        password.trim()
+      );
 
-      if (error) {
-        const next = attempts + 1;
-        setAttempts(next);
-        if (next >= MAX_ATTEMPTS) {
-          setLocked(true);
-          setErrorMsg(`Demasiados intentos fallidos. Acceso bloqueado por ${LOCK_SECONDS}s.`);
-        } else {
-          setErrorMsg(
-            translateError(
-              error,
-              `Acceso Denegado: Su correo no está registrado en la base de datos de la campaña. (Intento ${next}/${MAX_ATTEMPTS})`
-            )
-          );
-        }
-        setIsLoading(false);
-        return;
-      }
+      setSuccessMsg('¡Acceso concedido! Ingresando al panel...');
+      setTimeout(() => {
+        onLoginSuccess(profile ?? {
+          id:        user.id,
+          firstName: user.user_metadata?.first_name || user.email?.split('@')[0] || '',
+          lastName:  user.user_metadata?.last_name  || '',
+          email:     user.email || '',
+          roleId:    'user',
+          roleName:  'Usuario de Consulta',
+          status:    'Activo',
+          phone:     '',
+          clientId:  '',
+          clientName:'',
+          avatarUrl: '',
+          createdAt: '',
+        });
+      }, 600);
 
-      if (data?.user) {
-        setSuccessMsg('¡Acceso concedido! Ingresando al panel...');
-        setTimeout(() => {
-          onLoginSuccess({
-            id: data.user.id,
-            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || '',
-            email: data.user.email || '',
-            role: 'Super Admin',
-          });
-        }, 800);
-      }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Error crítico al iniciar sesión.');
+      const next = attempts + 1;
+      setAttempts(next);
+
+      // Clasificar el tipo de error para mostrar mensaje preciso
+      const rawMsg: string = err?.message || '';
+      let userMessage: string;
+
+      if (
+        rawMsg.toLowerCase().includes('invalid login credentials') ||
+        rawMsg.toLowerCase().includes('invalid credentials')
+      ) {
+        userMessage = `Correo o contraseña incorrectos. (Intento ${next}/${MAX_ATTEMPTS})`;
+      } else if (rawMsg.toLowerCase().includes('perfil no está configurado')) {
+        userMessage = 'El usuario existe pero su perfil no está configurado. Contacte al administrador.';
+      } else if (rawMsg.toLowerCase().includes('suspendido')) {
+        userMessage = 'El usuario está suspendido. Contacte al administrador.';
+      } else if (rawMsg.toLowerCase().includes('inactivo')) {
+        userMessage = 'El usuario está inactivo. Contacte al administrador.';
+      } else if (rawMsg.toLowerCase().includes('email not confirmed')) {
+        userMessage = 'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.';
+      } else {
+        userMessage = translateError(err, `Acceso denegado. Verifica tus credenciales. (Intento ${next}/${MAX_ATTEMPTS})`);
+      }
+
+      if (next >= MAX_ATTEMPTS) {
+        setLocked(true);
+        setErrorMsg(`Demasiados intentos fallidos. Acceso bloqueado por ${LOCK_SECONDS}s.`);
+      } else {
+        setErrorMsg(userMessage);
+      }
       setIsLoading(false);
     }
   };
@@ -165,42 +188,86 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    // Validaciones de frontend antes de llamar a Supabase
+    if (regPassword.trim().length < 6) {
+      setErrorMsg('La contraseña debe tener al menos 6 caracteres.');
+      setIsLoading(false);
+      return;
+    }
+    if (!regEmail.trim().includes('@')) {
+      setErrorMsg('Ingresa un correo electrónico válido.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Separar nombre completo en first_name / last_name
+    const nameParts  = regName.trim().split(' ');
+    const firstName  = nameParts[0] || regName.trim();
+    const lastName   = nameParts.slice(1).join(' ') || '';
+
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: regEmail.trim(),
-        password: regPassword.trim(),
-        options: { data: { name: regName.trim() } },
-      });
+      // authService.signUp garantiza:
+      // 1. Auth user creado
+      // 2. Perfil existe (con retry y RPC de respaldo)
+      // 3. Rol asignado
+      // 4. Datos normalizados
+      const { user, profile } = await authService.signUp(
+        regEmail.trim(),
+        regPassword.trim(),
+        firstName,
+        lastName
+      );
 
-      if (error) {
-        setErrorMsg(translateError(error, 'Error al registrar la cuenta.'));
-        setIsLoading(false);
-        return;
-      }
+      setSuccessMsg('¡Cuenta creada exitosamente! Iniciando sesión...');
 
-      if (data?.user) {
-        setSuccessMsg('¡Cuenta creada! Iniciando sesión automáticamente...');
-        setTimeout(async () => {
-          const { data: ld } = await supabase.auth.signInWithPassword({
-            email: regEmail.trim(),
-            password: regPassword.trim(),
+      // Iniciar sesión automáticamente con las credenciales recén usadas
+      setTimeout(async () => {
+        try {
+          const { user: loginUser, profile: loginProfile } = await authService.signIn(
+            regEmail.trim(),
+            regPassword.trim()
+          );
+          onLoginSuccess(loginProfile ?? {
+            id:        loginUser.id,
+            firstName: loginUser.user_metadata?.first_name || loginUser.email?.split('@')[0] || '',
+            lastName:  loginUser.user_metadata?.last_name  || '',
+            email:     loginUser.email || '',
+            roleId:    'user',
+            roleName:  'Usuario de Consulta',
+            status:    'Activo',
+            phone:     '',
+            clientId:  '',
+            clientName:'',
+            avatarUrl: '',
+            createdAt: '',
           });
-          if (ld?.user) {
-            onLoginSuccess({
-              id: ld.user.id,
-              name: ld.user.user_metadata?.name || ld.user.email?.split('@')[0] || '',
-              email: ld.user.email || '',
-              role: 'Super Admin',
-            });
-          } else {
-            setIsLoading(false);
-            setMode('login');
-            setSuccessMsg('Cuenta creada. Inicia sesión manualmente.');
-          }
-        }, 1200);
-      }
+        } catch (loginErr: any) {
+          // El registro fue exitoso pero el auto-login falló
+          // Mostrar éxito y llevar al login manual
+          setIsLoading(false);
+          setMode('login');
+          setEmail(regEmail.trim());
+          setSuccessMsg('¡Cuenta creada! Ingresa tu contraseña para continuar.');
+        }
+      }, 800);
+
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Error crítico al registrar.');
+      const rawMsg: string = err?.message || '';
+      let userMessage: string;
+
+      if (
+        rawMsg.toLowerCase().includes('already registered') ||
+        rawMsg.toLowerCase().includes('already exists') ||
+        rawMsg.toLowerCase().includes('ya está registrado')
+      ) {
+        userMessage = 'Este correo ya está registrado. Intenta iniciar sesión.';
+      } else if (rawMsg.toLowerCase().includes('password')) {
+        userMessage = 'La contraseña no cumple los requisitos mínimos.';
+      } else {
+        userMessage = translateError(err, 'Error al crear la cuenta. Intente de nuevo.');
+      }
+
+      setErrorMsg(userMessage);
       setIsLoading(false);
     }
   };
