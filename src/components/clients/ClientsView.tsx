@@ -339,11 +339,19 @@ export const ClientsView: React.FC = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const fusionUrl = (import.meta as any).env?.VITE_FUSION_URL || 'https://software-electoral-1me8.onrender.com';
-                            window.open(`${fusionUrl}/?campaign=${encodeURIComponent(client.organizationName)}&email=${encodeURIComponent(client.email)}`, '_blank');
+                            const targetUrl = `${fusionUrl}/?campaign=${encodeURIComponent(client.organizationName)}&email=${encodeURIComponent(client.email)}`;
+                            console.log('[Abrir Software] Abriendo:', targetUrl);
+                            const w = window.open(targetUrl, '_blank');
+                            if (!w) {
+                              // Fallback si el navegador bloquea popups
+                              window.location.href = targetUrl;
+                            }
                           }}
-                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all"
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all cursor-pointer"
                           title="Abrir software de Campaña Ganadora para este cliente"
                         >
                           <ExternalLink className="h-3.5 w-3.5 text-white" />
