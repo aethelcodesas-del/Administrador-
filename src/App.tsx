@@ -18,6 +18,7 @@ import { LoginView } from './components/auth/LoginView';
 import { RedSunBeeCampaignLanding } from './components/RedSunBeeCampaignLanding';
 import { ModuleSelectPage } from './components/ModuleSelectPage';
 import { supabase } from './services/supabaseClient';
+import { authService } from './services/authService';
 import { ShieldCheck } from 'lucide-react';
 
 const MainLayout: React.FC<{ onLogout: () => void; onBackToModules: () => void }> = ({
@@ -75,10 +76,10 @@ const MainLayout: React.FC<{ onLogout: () => void; onBackToModules: () => void }
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           {/* Top Header Bar */}
-          <Header 
-            onOpenMobileMenu={() => setMobileOpen(true)} 
-            onLogout={onLogout} 
-            onChangeModule={onBackToModules} 
+          <Header
+            onOpenMobileMenu={() => setMobileOpen(true)}
+            onLogout={onLogout}
+            onChangeModule={onBackToModules}
           />
 
           {/* Page View Container */}
@@ -102,7 +103,8 @@ export default function App() {
       try {
         const { data } = await supabase.auth.getUser();
         if (data?.user) {
-          setUser(data.user);
+          const profile = await authService.getProfileByAuthId(data.user.id);
+          setUser(profile);
           setTopLevelView('modules');
         } else {
           setUser(null);
@@ -132,8 +134,7 @@ export default function App() {
       setTopLevelView('admin');
     } else {
       alert(
-        `El módulo "${
-          moduleId === 'strategic' ? 'Gestión Estratégica & IA' : 'Gestión Territorial & E-14'
+        `El módulo "${moduleId === 'strategic' ? 'Gestión Estratégica & IA' : 'Gestión Territorial & E-14'
         }" está simulado a través de esta versión local integrada. Por favor, acceda al módulo "Gestión Administrativa Global" para ver el panel de administración central de clientes y campañas.`
       );
     }
@@ -156,39 +157,39 @@ export default function App() {
   switch (topLevelView) {
     case 'landing':
       return (
-        <RedSunBeeCampaignLanding 
-          onLogin={() => setTopLevelView('login')} 
-          onLoginSuccess={handleLoginSuccess} 
+        <RedSunBeeCampaignLanding
+          onLogin={() => setTopLevelView('login')}
+          onLoginSuccess={handleLoginSuccess}
         />
       );
     case 'login':
       return (
-        <LoginView 
-          onLoginSuccess={handleLoginSuccess} 
-          onBack={() => setTopLevelView('landing')} 
+        <LoginView
+          onLoginSuccess={handleLoginSuccess}
+          onBack={() => setTopLevelView('landing')}
         />
       );
     case 'modules':
       return (
-        <ModuleSelectPage 
-          onBack={handleLogout} 
-          onSelectModule={handleSelectModule} 
+        <ModuleSelectPage
+          onBack={handleLogout}
+          onSelectModule={handleSelectModule}
         />
       );
     case 'admin':
       return (
         <AppProvider user={user}>
-          <MainLayout 
-            onLogout={handleLogout} 
-            onBackToModules={() => setTopLevelView('modules')} 
+          <MainLayout
+            onLogout={handleLogout}
+            onBackToModules={() => setTopLevelView('modules')}
           />
         </AppProvider>
       );
     default:
       return (
-        <RedSunBeeCampaignLanding 
-          onLogin={() => setTopLevelView('login')} 
-          onLoginSuccess={handleLoginSuccess} 
+        <RedSunBeeCampaignLanding
+          onLogin={() => setTopLevelView('login')}
+          onLoginSuccess={handleLoginSuccess}
         />
       );
   }

@@ -205,46 +205,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
     }
   }, [isDarkMode]);
 
-  // Persist state changes
-  useEffect(() => {
-    localStorage.setItem('cg_clients', JSON.stringify(clients));
-  }, [clients]);
+  // Persist state changes removed for real Supabase connection
 
-  useEffect(() => {
-    localStorage.setItem('cg_licenses', JSON.stringify(licenses));
-  }, [licenses]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_subscriptions', JSON.stringify(subscriptions));
-  }, [subscriptions]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_roles', JSON.stringify(roles));
-  }, [roles]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_audit', JSON.stringify(auditLogs));
-  }, [auditLogs]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_plans', JSON.stringify(plans));
-  }, [plans]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_invoices', JSON.stringify(invoices));
-  }, [invoices]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_campaigns', JSON.stringify(campaigns));
-  }, [campaigns]);
 
 
 
@@ -276,7 +238,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode; user?: any }> = 
             activeUsersCount: c.active_users_count || 0,
             maxUsersAllowed: c.max_users_allowed || 0,
             activeCampaignsCount: c.active_campaigns_count || 0,
-                        notes: c.notes,
+            notes: c.notes,
             logoUrl: c.logo_url,
             aspiration: c.aspiration
           }));

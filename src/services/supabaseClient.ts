@@ -1,192 +1,26 @@
-// Mock Supabase client that handles all authentication and database operations 100% locally in the browser.
-// No external backend, no API keys, no secrets.
+// Supabase client bridge mapping standard interfaces to the real Supabase library client.
+import { supabase } from '../lib/supabase';
 
-import { INITIAL_USERS, INITIAL_CLIENTS, INITIAL_LICENSES, INITIAL_SUBSCRIPTIONS, INITIAL_CAMPAIGNS } from '../data/initialData';
-
-// Constants for URLs
-export const SUPABASE_URL = 'http://localhost:3000';
+export { supabase } from '../lib/supabase';
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 export const PANEL_ADMIN_URL = '#';
 
-// Helper to get local storage users list
-const getLocalUsers = (): any[] => {
-  const saved = localStorage.getItem('cg_users');
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error parsing cg_users:', e);
-    }
-  }
-  // Initialize with initial seed users if empty
-  localStorage.setItem('cg_users', JSON.stringify(INITIAL_USERS));
-  return INITIAL_USERS;
-};
-
-// Seed credentials list
-const SEED_CREDENTIALS = [
-  { email: 'admin@campana.ai', password: 'demo', name: 'Santiago Pérez (Admin)', role: 'admin' },
-  { email: 'admin@campana.ai', password: 'admin2026', name: 'Santiago Pérez (Admin)', role: 'admin' },
-  { email: 'ober.osorio@campana.ai', password: 'password', name: 'Ober Osorio', role: 'admin' },
-  { email: 'ober.osorio@campana.ai', password: 'demo', name: 'Ober Osorio', role: 'admin' },
-  { email: 'santiago.perez@campana.ai', password: 'password', name: 'Santiago Pérez', role: 'admin' },
-  { email: 'estrategia@campana.ai', password: 'estrategia2026', name: 'Dra. Elena Rostova', role: 'estrategico' },
-  { email: 'territorio@campana.ai', password: 'territorio2026', name: 'Carlos Mendoza', role: 'territorial' }
-];
-
-export const supabase = {
-  auth: {
-    async signInWithPassword({ email, password }: any) {
-      console.log('🔑 Local Auth - signInWithPassword:', email);
-      
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanPassword = password.trim();
-
-      // Check seed credentials first
-      const seedMatch = SEED_CREDENTIALS.find(
-        (c) => c.email.toLowerCase() === cleanEmail && c.password === cleanPassword
-      );
-
-      if (seedMatch) {
-        const userObj = {
-          id: `u-${seedMatch.role}-1`,
-          email: seedMatch.email,
-          user_metadata: { name: seedMatch.name },
-          role: seedMatch.role
-        };
-        localStorage.setItem('cg_session', JSON.stringify(userObj));
-        return { data: { user: userObj }, error: null };
-      }
-
-      // Check local storage users list
-      const localUsers = getLocalUsers();
-      const userMatch = localUsers.find(
-        (u) => (u.email || '').toLowerCase().trim() === cleanEmail && (u.password === cleanPassword || u.passwordHash === cleanPassword)
-      );
-
-      if (userMatch) {
-        const userObj = {
-          id: userMatch.id,
-          email: userMatch.email,
-          user_metadata: { name: userMatch.name },
-          role: userMatch.role_id || userMatch.role || 'admin'
-        };
-        localStorage.setItem('cg_session', JSON.stringify(userObj));
-        return { data: { user: userObj }, error: null };
-      }
-
-      // Allow "demo" password fallback for easy testing
-      if (cleanPassword === 'demo') {
-        const userObj = {
-          id: `u-demo-${Date.now()}`,
-          email: cleanEmail,
-          user_metadata: { name: cleanEmail.split('@')[0] },
-          role: 'admin'
-        };
-        localStorage.setItem('cg_session', JSON.stringify(userObj));
-        return { data: { user: userObj }, error: null };
-      }
-
-      return {
-        data: { user: null },
-        error: { message: 'Credenciales de demostración incorrectas. Usa admin@campana.ai / demo' }
-      };
-    },
-
-    async signUp({ email, password, options }: any) {
-      console.log('➕ Local Auth - signUp:', email);
-      const cleanEmail = email.trim().toLowerCase();
-      const localUsers = getLocalUsers();
-
-      // Check if user already exists
-      if (localUsers.some((u) => (u.email || '').toLowerCase().trim() === cleanEmail)) {
-        return { data: null, error: { message: 'Este correo electrónico ya está registrado.' } };
-      }
-
-      const newUser = {
-        id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
-        email: cleanEmail,
-        name: options?.data?.name || cleanEmail.split('@')[0],
-        role_id: 'admin',
-        role_name: 'Gestión Administrativa',
-        status: 'Activo',
-        created_at: new Date().toISOString(),
-        password: password
-      };
-
-      const updatedUsers = [...localUsers, newUser];
-      localStorage.setItem('cg_users', JSON.stringify(updatedUsers));
-
-      const userObj = {
-        id: newUser.id,
-        email: newUser.email,
-        user_metadata: { name: newUser.name },
-        role: 'admin'
-      };
-
-      localStorage.setItem('cg_session', JSON.stringify(userObj));
-      return { data: { user: userObj }, error: null };
-    },
-
-    async signOut() {
-      console.log('🚪 Local Auth - signOut');
-      localStorage.removeItem('cg_session');
-      return { error: null };
-    },
-
-    async getUser() {
-      const saved = localStorage.getItem('cg_session');
-      if (saved) {
-        try {
-          return { data: { user: JSON.parse(saved) }, error: null };
-        } catch (e) {
-          return { data: { user: null }, error: e };
-        }
-      }
-      return { data: { user: null }, error: null };
-    },
-
-    async signInWithOAuth({ provider }: any) {
-      console.log('🌐 Local Auth - signInWithOAuth:', provider);
-      // Simulate Google auth by logging in as seed admin user
-      const userObj = {
-        id: 'u-admin-1',
-        email: 'admin@campana.ai',
-        user_metadata: { name: 'Santiago Pérez (Admin)' },
-        role: 'admin'
-      };
-      localStorage.setItem('cg_session', JSON.stringify(userObj));
-      window.location.reload();
-      return { error: null };
-    }
-  },
-
-  // Dummy realtime channel implementation
-  channel(name: string) {
-    return {
-      on(event: string, filter: any, callback: any) {
-        return this;
-      },
-      subscribe() {
-        return this;
-      }
-    };
-  },
-
-  removeChannel(channel: any) {
-    // No-op
-  }
-};
-
 /**
- * Test Database Connection Mock
+ * Verifica la conexión real con Supabase consultando la tabla de settings.
  */
 export async function testSupabaseConnection(): Promise<{ success: boolean; message: string }> {
-  return { success: true, message: 'Conexión local activa (Sin base de datos externa)' };
+  try {
+    const { error } = await supabase.from('settings').select('count', { count: 'exact', head: true });
+    if (error) throw error;
+    return { success: true, message: 'Conexión a Supabase activa y validada exitosamente.' };
+  } catch (e: any) {
+    console.error('Error al probar conexión de Supabase:', e);
+    return { success: false, message: `Error de conexión: ${e?.message || e}` };
+  }
 }
 
 /**
- * Register a New Candidate/Client with instant Panel Admin access.
- * Simulates creation of client organization, superadmin user, and default license.
+ * Registra un cliente y su respectiva organización en Supabase Auth y PostgreSQL.
  */
 export async function registerNewClient(data: {
   fullName: string;
@@ -198,114 +32,131 @@ export async function registerNewClient(data: {
 }): Promise<{ success: boolean; error?: string; panelUrl?: string }> {
   try {
     const cleanEmail = data.email.trim().toLowerCase();
-    
-    // 1. Check if email exists
-    const localUsers = getLocalUsers();
-    if (localUsers.some((u) => (u.email || '').toLowerCase().trim() === cleanEmail)) {
-      return { success: false, error: 'Este correo electrónico ya está registrado.' };
-    }
 
-    // 2. Create the client organization record
-    const newClient = {
-      id: `CLI-${Math.floor(100 + Math.random() * 900)}`,
-      organizationName: data.campaignName,
-      responsibleName: data.fullName,
+    // 1. Crear el usuario en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: data.password,
+      options: {
+        data: {
+          first_name: data.fullName,
+          last_name: '',
+        },
+      },
+    });
+
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('No se pudo crear la cuenta de usuario en el servidor.');
+
+    // Esperar a que el trigger inserte el perfil
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    // 2. Generar el ID de organización
+    const clientId = `CLI-${Math.floor(100 + Math.random() * 900)}`;
+
+    // 3. Crear el registro del cliente en public.clients
+    const { error: clientError } = await supabase.from('clients').insert([{
+      id: clientId,
+      name: data.campaignName,
+      document: 'N/A',
       email: cleanEmail,
       phone: data.phone || '',
-      country: 'Colombia',
-      department: data.department || 'Colombia',
-      city: 'Local',
-      createdAt: new Date().toISOString(),
+      address: data.department || 'Colombia',
       status: 'Activo',
-      planId: 'plan-pro'
-    };
+    }]);
 
-    const savedClients = JSON.parse(localStorage.getItem('cg_clients') || JSON.stringify(INITIAL_CLIENTS));
-    localStorage.setItem('cg_clients', JSON.stringify([newClient, ...savedClients]));
+    if (clientError) throw clientError;
 
-    // 3. Create the superadmin user linked to the client
-    const newUser = {
-      id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
-      email: cleanEmail,
-      name: data.fullName,
-      role_id: 'admin',
-      role_name: 'Gestión Administrativa',
-      status: 'Activo',
-      client_id: newClient.id,
-      client_name: newClient.organizationName,
-      created_at: new Date().toISOString(),
-      password: data.password
-    };
+    // 4. Actualizar el perfil del usuario vinculándolo al cliente
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        phone: data.phone || null,
+        client_id: clientId,
+      })
+      .eq('auth_user_id', authData.user.id);
 
-    localStorage.setItem('cg_users', JSON.stringify([newUser, ...localUsers]));
+    if (profileError) throw profileError;
 
-    // 4. Create default license
-    const newLicense = {
-      id: `LIC-${Math.floor(100 + Math.random() * 900)}`,
-      clientId: newClient.id,
-      clientName: newClient.organizationName,
-      planId: 'plan-pro',
+    // 5. Vincular rol de administrador
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('auth_user_id', authData.user.id)
+      .maybeSingle();
+
+    if (profileData) {
+      await supabase.from('user_roles').insert([{
+        user_id: profileData.id,
+        role_id: 'admin',
+      }]);
+    }
+
+    // 6. Crear licencia Pro para el cliente por defecto
+    const licenseId = `LIC-${Math.floor(100000 + Math.random() * 900000)}`;
+    const expiresDate = new Date();
+    expiresDate.setMonth(expiresDate.getMonth() + 12); // 12 meses de vigencia
+
+    const { error: licError } = await supabase.from('licenses').insert([{
+      id: licenseId,
+      license_key: `CG-PRO-2026-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      client_id: clientId,
+      user_id: profileData?.id || null,
+      software_id: 'software-beecampaign',
+      plan_id: 'plan-pro',
+      type: 'Anual',
       status: 'Activa',
-      activationDate: new Date().toISOString(),
-      expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      enabledModuleCodes: ['dashboard', 'campana', 'electores', 'lideres', 'comunicaciones', 'ia']
-    };
+      start_date: new Date().toISOString(),
+      expiration_date: expiresDate.toISOString(),
+    }]);
 
-    const savedLicenses = JSON.parse(localStorage.getItem('cg_licenses') || JSON.stringify(INITIAL_LICENSES));
-    localStorage.setItem('cg_licenses', JSON.stringify([newLicense, ...savedLicenses]));
+    if (licError) throw licError;
 
-    // 5. Create default subscription
-    const newSubscription = {
-      id: `SUB-${Math.floor(100 + Math.random() * 900)}`,
-      clientId: newClient.id,
-      planId: 'plan-pro',
+    // 7. Habilitar módulos por defecto
+    const defaultModules = ['dashboard', 'campana', 'electores', 'lideres', 'comunicaciones', 'ia'];
+    const modulesInserts = defaultModules.map((modId) => ({
+      license_id: licenseId,
+      module_id: modId,
+    }));
+    await supabase.from('license_modules').insert(modulesInserts);
+
+    // 8. Crear suscripción anual por defecto
+    const subId = `SUB-${Math.floor(10000 + Math.random() * 90000)}`;
+    await supabase.from('subscriptions').insert([{
+      id: subId,
+      client_id: clientId,
+      user_id: profileData?.id || null,
+      plan_id: 'plan-pro',
       status: 'Activa',
-      period: 'Anual',
-      startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      price: 2400000
-    };
+      start_date: new Date().toISOString(),
+      expiration_date: expiresDate.toISOString(),
+    }]);
 
-    const savedSubs = JSON.parse(localStorage.getItem('cg_subscriptions') || JSON.stringify(INITIAL_SUBSCRIPTIONS));
-    localStorage.setItem('cg_subscriptions', JSON.stringify([newSubscription, ...savedSubs]));
-
-    // 6. Create default campaign
-    const newCampaign = {
+    // 9. Crear campaña por defecto
+    await supabase.from('campaigns').insert([{
       id: `CAMP-${Math.floor(100 + Math.random() * 900)}`,
+      client_id: clientId,
       name: data.campaignName,
-      clientId: newClient.id,
-      clientName: newClient.organizationName,
-      status: 'Activo',
-      candidateName: data.fullName,
-      type: 'Alcaldía',
-      budget: 50000000,
-      createdAt: new Date().toISOString()
-    };
-
-    const savedCampaigns = JSON.parse(localStorage.getItem('cg_campaigns') || JSON.stringify(INITIAL_CAMPAIGNS));
-    localStorage.setItem('cg_campaigns', JSON.stringify([newCampaign, ...savedCampaigns]));
-
-    // 7. Set Session
-    const userObj = {
-      id: newUser.id,
-      email: newUser.email,
-      user_metadata: { name: newUser.name },
-      role: 'admin'
-    };
-    localStorage.setItem('cg_session', JSON.stringify(userObj));
+      candidate_name: data.fullName,
+      election_type: 'Alcaldía',
+      territory: data.department || 'Colombia',
+      start_date: new Date().toISOString(),
+      election_date: expiresDate.toISOString(),
+      status: 'En Ejecución',
+    }]);
 
     return {
       success: true,
-      panelUrl: '#'
+      panelUrl: '#',
     };
   } catch (err: any) {
-    console.error('Error registering local client:', err);
-    return { success: false, error: err?.message || 'Error inesperado al crear la cuenta.' };
+    console.error('Error al registrar cliente en Supabase:', err);
+    return { success: false, error: err?.message || 'Error al procesar el registro.' };
   }
 }
 
 /**
- * Save a Demo Request or Lead Inquiry locally
+ * Guarda una consulta de demo directamente en la bitácora de actividad.
  */
 export async function saveDemoLeadToSupabase(lead: {
   fullName: string;
@@ -315,19 +166,19 @@ export async function saveDemoLeadToSupabase(lead: {
   department: string;
   municipality?: string;
   notes?: string;
-}) {
+}): Promise<{ success: boolean; error?: string; data?: any }> {
   try {
-    const savedLeads = JSON.parse(localStorage.getItem('cg_demo_leads') || '[]');
-    const newLead = {
-      ...lead,
-      id: `lead-${Date.now()}`,
-      created_at: new Date().toISOString()
-    };
-    localStorage.setItem('cg_demo_leads', JSON.stringify([newLead, ...savedLeads]));
-    console.log('📈 Lead guardado localmente:', newLead);
-    return { success: true, data: newLead };
+    const { data, error } = await supabase.from('activity_logs').insert([{
+      action: 'demo_lead_request',
+      module: 'landing',
+      description: `Solicitud de Demo: ${lead.fullName} (${lead.email}) - Celular: ${lead.phone}`,
+      metadata: lead,
+    }]).select().single();
+
+    if (error) throw error;
+    return { success: true, data };
   } catch (err: any) {
-    console.error('Error saving lead locally:', err);
-    return { success: false, error: err?.message };
+    console.error('Error al guardar lead en Supabase:', err);
+    return { success: false, error: err?.message || 'Error al enviar la solicitud.' };
   }
 }
