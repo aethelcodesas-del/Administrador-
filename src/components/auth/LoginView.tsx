@@ -31,23 +31,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBack }) 
     setIsLoading(true);
     setErrorMsg(null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password.trim(),
-    });
-
-    if (error) {
-      setErrorMsg(translateError(error, 'Credenciales incorrectas. Verifica tus datos o crea una cuenta.'));
-      setIsLoading(false);
-      return;
-    }
-
-    if (data?.user) {
-      onLoginSuccess({
-        name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || '',
-        email: data.user.email || '',
-        role: 'Super Admin',
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim(),
       });
+
+      if (error) {
+        setErrorMsg(translateError(error, 'Credenciales incorrectas. Verifica tus datos o crea una cuenta.'));
+        setIsLoading(false);
+        return;
+      }
+
+      if (data?.user) {
+        onLoginSuccess({
+          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || '',
+          email: data.user.email || '',
+          role: 'Super Admin',
+        });
+      }
+    } catch (e: any) {
+      console.error('Catch error en signIn:', e);
+      setErrorMsg(e?.message || 'Error crítico al iniciar sesión.');
+      setIsLoading(false);
     }
   };
 
@@ -85,18 +91,25 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBack }) 
       return;
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: regEmail.trim(),
-      password: regPassword.trim(),
-      options: {
-        data: {
-          name: regName.trim(),
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: regEmail.trim(),
+        password: regPassword.trim(),
+        options: {
+          data: {
+            name: regName.trim(),
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      setErrorMsg(translateError(error, 'Error al registrar el administrador central.'));
+      if (error) {
+        setErrorMsg(translateError(error, 'Error al registrar el administrador central.'));
+        setIsLoading(false);
+        return;
+      }
+    } catch (e: any) {
+      console.error('Catch error en signUp:', e);
+      setErrorMsg(e?.message || 'Error crítico en el servidor de autenticación.');
       setIsLoading(false);
       return;
     }
