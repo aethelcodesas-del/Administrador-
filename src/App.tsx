@@ -14,7 +14,7 @@ import { AuditView } from './components/audit/AuditView';
 import { NotificationsView } from './components/notifications/NotificationsView';
 import { SimulatorView } from './components/simulator/SimulatorView';
 import { SettingsView } from './components/settings/SettingsView';
-import { LoginView } from './components/auth/LoginView';
+import { LoginModal } from './components/LoginModal';
 import { RedSunBeeCampaignLanding } from './components/RedSunBeeCampaignLanding';
 import { ModuleSelectPage } from './components/ModuleSelectPage';
 import { supabase } from './services/supabaseClient';
@@ -139,9 +139,11 @@ export default function App() {
 
   if (!user) {
     return (
-      <LoginView
-        onLoginSuccess={handleLoginSuccess}
-      />
+      <div className="min-h-screen bg-slate-950">
+        <LoginModal
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </div>
     );
   }
 
